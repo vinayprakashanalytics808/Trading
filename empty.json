@@ -1,0 +1,18 @@
+{
+  "symbol" : "DUMMY.NS",
+  "historical" : [ {
+    "date" : "2021-04-12",
+    "open" : 120.5,
+    "high" : 120.949997,
+    "low" : 112.800003,
+    "close" : 113.5,
+    "adjClose" : 113.5,
+    "volume" : 4773037.0,
+    "unadjustedVolume" : 4773037.0,
+    "change" : -7.0,
+    "changePercent" : -5.809,
+    "vwap" : 115.75,
+    "label" : "April 12, 21",
+    "changeOverTime" : -0.05809
+  }]
+}
