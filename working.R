@@ -1,18 +1,8 @@
-library(jsonlite)
-# install.packages("rjson")
-library(rjson)
-library(stringr)
-require(reshape2)
-library(dplyr)
-library(tidyverse)
-require(reshape2)
-library(readxl)
-library(lubridate)
-library(zoo)
-source("DButils.R")
-List_500_companies <- read_excel("List_500_companies.xlsx")
+## This file is for a new stock
+
+
 # List_500_companies <- read_excel("remaining.xlsx")
-no_of_companies <- c(16:20)
+no_of_companies <- c(188:190)
 com <- paste0(List_500_companies$symbol[no_of_companies], collapse=",")
 ## Get the stock prices 
 data_ss <- rjson::fromJSON(file = 
