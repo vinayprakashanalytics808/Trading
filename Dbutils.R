@@ -1,15 +1,18 @@
 library(RODBC)
 library(rlang)
+
+## Connnection to sql server
 conn <- odbcDriverConnect(connection = paste0("Driver={SQL Server Native client 11.0};
                             server=localhost;database=Nifty;trusted_connection=yes;"))
 
+## Not required. This is an old method
 filter_fun <- function(df, cat, cat_val){
   df %>%
     filter({{cat}} == cat_val)
 }
 
-# sqlSave(conn, cast.stock, tablename = "infratel")
 
+## Not required. This is an old method
 delete_update <- function(r_table,sql_table){
   # sqlQuery(conn,paste0("DELETE FROM [dbo].",sql_table))
   sqlQuery(conn,paste0("DROP TABLE  [dbo].[",sql_table,"]"))

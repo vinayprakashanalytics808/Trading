@@ -2,7 +2,7 @@
 
 ## Database : Microsoft Sql Server and List_500_companies.xlsx [can be viewed in project folder]
 ## Programming langauge : R
-## Platoform to capture Stocks data : Financial Modeling Prep [It is a new concept that informs you about stock markets information (news, currencies and stock prices)]
+## Platform to capture Stocks data : Financial Modeling Prep [It is a new concept that informs you about stock markets information (news, currencies and stock prices)]
 ## Main R files to consider : app.R(both ui and server logics are here), union_100_Data_points.R, Dbutils.R
 
 # Description 
