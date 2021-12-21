@@ -5,7 +5,7 @@
 3. Platform to capture Stocks data : Financial Modeling Prep [It is a new concept that informs you about stock markets information (news, currencies and stock prices)]
 4. Main R files to consider : app.R(both ui and server logics are here), union_100_Data_points.R, Dbutils.R
 
-# Description 
+## Description 
 The Application features below parameters
 1. Captures nifty 500 stocks data
 2. Extracts the data from Financial Modeling Prep based on api call and  stores the data into the database and retrieves it when required.  [Tab : DataBase Last 100 records]
