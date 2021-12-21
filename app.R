@@ -103,73 +103,92 @@ server <- function(input, output, session) {
   
   observeEvent(input$exe,{
     
-    ini_time <- Sys.time()
-    stock_data <- NULL
-    data_ss <- NULL
-    cast.stock <- NULL
-    from_Date <- input$from
-    data_ss <- NULL
-    
-    ## new method
-    #ini_num <- c(309:312)
-    ini_num <- List_500_companies$SL_no[List_500_companies$symbol %in% unlist(strsplit(paste0(input$com,collapse = ","),','))]
-    ini_company_list_num <- c(ini_num)
-    asd1 <- as.data.frame(List_500_companies[ini_company_list_num,])
-    company_list_num <- c(1: length(ini_num))
-    
-    com <- c()
-    for (j in company_list_num){
-      # com <- c(com, paste0(List_500_companies$symbol[j], collapse=","))
-      com[j] <- paste0(asd1$symbol[j], collapse=",")
+    if(is.null(input$com)){
+      showModal(modalDialog(
+        title = "Note",
+        "Please select atleast one company"
+      ))
+      # showModal(ui = "Please select atleast one company")
+    } else {
       
-      
-      # com <- paste0(com, collapse = ",")
-      ## Get the stock prices 
-      data_ss[[j]] <- rjson::fromJSON(file = 
-                                        paste0("https://fmpcloud.io/api/v3/historical-price-full/",com[j],"?from=",from_Date,"&to=",
-                                               Sys.Date(),"&apikey=d044d11c5bbbc7c89697083850466e50"))
-      
-      ## old api key : 9021664c6f29c04aa567b7e637a3c70c
-      
-
-      
-      if(length(data_ss[[j]]) > 0){
-        data_ss[[j]] <- data_ss[[j]]
-      } else {
-        data_ss[[j]] <- fromJSON(file = "empty.json")
-      }
-      print("Vinay")
-      print(paste0("https://fmpcloud.io/api/v3/historical-price-full/",com[j],"?from=",from_Date,"&to=",
-                   Sys.Date(),"&apikey=d044d11c5bbbc7c89697083850466e50"))
-      print("Vinay")
-      stock_data <- t(as.data.frame(data_ss))
-      stock_data <- as.data.frame(stock_data)
-      stock_data$description <- rownames(stock_data)
-      stock_data$ticker <- ifelse(grepl("symbol", stock_data$description), stock_data$V1, "")
-      stock_data[stock_data == ""] <- NA
-      stock_data <- stock_data %>% tidyr::fill(ticker)
-      stock_data$date <- ifelse(grepl("date", stock_data$description), stock_data$V1, "")
-      stock_data <- stock_data[!grepl("symbol",stock_data$description),]
-      stock_data[stock_data == ""] <- NA
-      stock_data <- stock_data %>% tidyr::fill(date)
-      rownames(stock_data) <- NULL
-      stock_data$description <- gsub("[[:digit:][:punct:]]", "", stock_data$description)
-      stock_data$description_text = substr(stock_data$description,11,nchar(stock_data$description))
-      stock_data$description <- NULL
-      cast.stock <- dcast(stock_data, ticker+date~description_text,value.var = "V1")
-      cast.stock$date <- as.Date(cast.stock$date)
-      colnames(cast.stock)[8] <- "date1" 
-      cast.stock <- cast.stock %>% mutate(across(c(adjClose, change,changeOverTime,changePercent,close,high,low,open,unadjustedVolume,volume,vwap), as.numeric))
-      
-      ## update to New_dates in sql
-      sqlSave(conn, cast.stock, tablename = "New_dates", rownames = FALSE ,colnames = FALSE, append=TRUE)
-      sqlQuery(conn, paste0("EXEC update_ticker_table ", "'",asd1$sql_table[j],"'"))
-    }
-    final_time <- Sys.time()
-    total_time <- final_time - ini_time
-    showNotification("Table updated")
+      ## Error to handle app from crashing (Error Handling)
+      error_message <- function() 'Free plan is limited to US stocks only please visit our subscription page to upgrade your plan at https://financialmodelingprep.com/developer/docs/pricing'
+      tryCatch(
+        {
+          ini_time <- Sys.time()
+          stock_data <- NULL
+          data_ss <- NULL
+          cast.stock <- NULL
+          from_Date <- input$from
+          data_ss <- NULL
+          
+          ## new method
+          #ini_num <- c(309:312)
+          ini_num <- List_500_companies$SL_no[List_500_companies$symbol %in% unlist(strsplit(paste0(input$com,collapse = ","),','))]
+          ini_company_list_num <- c(ini_num)
+          asd1 <- as.data.frame(List_500_companies[ini_company_list_num,])
+          company_list_num <- c(1: length(ini_num))
+          
+          com <- c()
+          for (j in company_list_num){
+            # com <- c(com, paste0(List_500_companies$symbol[j], collapse=","))
+            com[j] <- paste0(asd1$symbol[j], collapse=",")
+            
+            
+            # com <- paste0(com, collapse = ",")
+            ## Get the stock prices 
+            data_ss[[j]] <- rjson::fromJSON(file = 
+                                              paste0("https://fmpcloud.io/api/v3/historical-price-full/",com[j],"?from=",from_Date,"&to=",
+                                                     Sys.Date(),"&apikey=d044d11c5bbbc7c89697083850466e50"))
+            
+            ## old api key : 9021664c6f29c04aa567b7e637a3c70c
+            
+            
+            
+            if(length(data_ss[[j]]) > 0){
+              data_ss[[j]] <- data_ss[[j]]
+            } else {
+              data_ss[[j]] <- fromJSON(file = "empty.json")
+            }
+            print("Vinay")
+            print(paste0("https://fmpcloud.io/api/v3/historical-price-full/",com[j],"?from=",from_Date,"&to=",
+                         Sys.Date(),"&apikey=d044d11c5bbbc7c89697083850466e50"))
+            print("Vinay")
+            stock_data <- t(as.data.frame(data_ss))
+            stock_data <- as.data.frame(stock_data)
+            stock_data$description <- rownames(stock_data)
+            stock_data$ticker <- ifelse(grepl("symbol", stock_data$description), stock_data$V1, "")
+            stock_data[stock_data == ""] <- NA
+            stock_data <- stock_data %>% tidyr::fill(ticker)
+            stock_data$date <- ifelse(grepl("date", stock_data$description), stock_data$V1, "")
+            stock_data <- stock_data[!grepl("symbol",stock_data$description),]
+            stock_data[stock_data == ""] <- NA
+            stock_data <- stock_data %>% tidyr::fill(date)
+            rownames(stock_data) <- NULL
+            stock_data$description <- gsub("[[:digit:][:punct:]]", "", stock_data$description)
+            stock_data$description_text = substr(stock_data$description,11,nchar(stock_data$description))
+            stock_data$description <- NULL
+            cast.stock <- dcast(stock_data, ticker+date~description_text,value.var = "V1")
+            cast.stock$date <- as.Date(cast.stock$date)
+            colnames(cast.stock)[8] <- "date1" 
+            cast.stock <- cast.stock %>% mutate(across(c(adjClose, change,changeOverTime,changePercent,close,high,low,open,unadjustedVolume,volume,vwap), as.numeric))
+            
+            ## update to New_dates in sql
+            sqlSave(conn, cast.stock, tablename = "New_dates", rownames = FALSE ,colnames = FALSE, append=TRUE)
+            sqlQuery(conn, paste0("EXEC update_ticker_table ", "'",asd1$sql_table[j],"'"))
+          }
+          final_time <- Sys.time()
+          total_time <- final_time - ini_time
+          showNotification("Table updated")
+        },
+        error = function(e){
+          showModal(modalDialog(
+            error_message()
+          ))
+        }
+      )
     # shinyalert("Oops!", "Something went wrong.", type = "error")
-    
+    }
   })
   
   output$slno <- renderPrint({
@@ -189,6 +208,16 @@ server <- function(input, output, session) {
   
   ## To update top 100 values/data points to the table
   observeEvent(input$exe_top_hundred,{
+    
+    if(is.null(input$com)){
+      showModal(modalDialog(
+        title = "Note",
+        "Please select atleast one company"
+      ))
+      # showModal(ui = "Please select atleast one company")
+    } else {
+      
+    
     
     sam_df_All <- update_top_hundred_tables()
     sam_df_All <- sam_df_All %>% distinct(ticker, date, .keep_all=TRUE)
@@ -349,8 +378,7 @@ server <- function(input, output, session) {
       model1 <- data_table$sam_df_All_filtered() %>% group_by(ticker) %>% do(model = lm(based_on_high ~ lead_based_on_high , data = .))
       paste0("Predicted Relation : ",format(model1$model[model1$ticker %in% input$pre_tic1][[1]]$coefficients[[1]] + (input$prev_relation * model1$model[model1$ticker %in% input$pre_tic1][[1]]$coefficients[[2]]),scientific = F,digits = 20))
     })
-
-    
+    }    
     
 })
   
