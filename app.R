@@ -13,6 +13,7 @@ library(zoo)
 library(shinyalert)
 library(DT)
 library(plotly)
+library(rhandsontable)
 source("DButils.R")
 source("union_100_Data_points.R")
 List_500_companies <- read_excel("List_500_companies.xlsx")
@@ -23,9 +24,11 @@ ui <- fluidPage(
   #             }'),
   fluidRow(column(width = 4, dateInput("from","From",value = Sys.Date()-15)),br(),
            # column(width = 4, h5("Total Investment Per Share as per Predicted Open"),textOutput("investment")), 
-           column(width = 4, h5("Total Returns per Share in %"),textOutput("returns"))),
-  fluidRow(column(width = 4, selectInput("com", "Companies", choices = List_500_companies$symbol, multiple = TRUE))
-           # ,column(width = 4, rHandsontableOutput('table'))
+           # column(width = 4, h5("Total Returns per Share in %"),textOutput("returns"))
+           ),
+  fluidRow(uiOutput("com1")
+    # column(width = 4, selectInput("com", "Companies", choices = List_500_companies$symbol, multiple = TRUE))
+          ,column(width = 4, radioButtons("sel", "Portfolio", choices = unique(List_500_companies$Selective), selected =  "Others"))
            ),
   
   # verbatimTextOutput("slno"),
@@ -34,26 +37,31 @@ ui <- fluidPage(
   br(),br(),
   tabsetPanel(
     tabPanel("DataBase Last 100 records",br(), dataTableOutput("top_hundred")),
+    tabPanel("Relation",br(), uiOutput("ret"),actionButton("sd","Calculate")),
+    tabPanel("Prediction",br(), 
+             fluidRow(
+               # column(width = 3, selectInput("tic","Ticker",choices = List_500_companies$symbol)),
+               uiOutput("tic"),
+               column(width = 3,numericInput("open_price","Open Price",value = 3)), 
+               # column(width = 3, br(), actionButton("cal","Calculate")),
+               column(width = 3, br(), div(style="width:500px;padding-left:100px;",verbatimTextOutput("predicted_high")))
+             ),
+             fluidRow(
+               uiOutput("tic1"),
+               column(width = 3,numericInput("prev_relation","Relation",value = 3)), 
+               column(width = 3, br(), div(style="width:500px;padding-left:100px;",verbatimTextOutput("predicted_relation")))
+             )),
     tabPanel("DataBase Postitive Open Low",br(), dataTableOutput("positive_openlow")),
     # tabPanel("Current Market Price",br(), dataTableOutput("cmp")),
     tabPanel("Current Market Price", br(),
              actionButton("start", "Start"), plotlyOutput("cmp")),
-    tabPanel("Open Vs Previous Close",br(), plotlyOutput("oprec")),
-    tabPanel("Predict Open",br(), 
-             fluidRow(
-               # column(width = 3, selectInput("tic","Ticker",choices = List_500_companies$symbol)),
-               uiOutput("tic"),
-               column(width = 3,numericInput("close_price","Close Price",value = 3)), 
-               # column(width = 3, br(), actionButton("cal","Calculate")),
-               column(width = 3, br(), verbatimTextOutput("predicted_open"))
-               )),
-    tabPanel("Returns",br(), uiOutput("ret"))
-  ),
+    tabPanel("High Vs Open",br(), plotlyOutput("oprec"))
+   ),
   # dataTableOutput("top_hundred"),
   br(),
   tabsetPanel(
-    tabPanel("Open Low High",plotlyOutput("openlow")),
-    tabPanel("Invest/Not Invest",plotlyOutput("inv_not_inv")),
+    tabPanel("Relation",br(),selectInput("phigh", "Predicted High", choices = c("pred_high", "pred_high_2method")), plotlyOutput("rela")),
+    tabPanel("high-open",plotlyOutput("hi_op")),
     tabPanel("Open Trend",plotlyOutput("open")),
     tabPanel("Low Trend",plotlyOutput("low")),
     tabPanel("High Trend",plotlyOutput("high")),
@@ -69,6 +77,15 @@ server <- function(input, output, session) {
   data_table <- reactiveValues()
   x <- reactiveVal()
   values <- reactiveValues(data = data.frame(Description = c("INR","Price Per Share","High"),val = c(0,0,0)))
+  
+  selected_portfolio <- reactive({
+    List_500_companies$symbol[List_500_companies$Selective == input$sel]
+  })
+  
+
+  output$com1 <- renderUI({
+    column(width = 4, selectInput(inputId = "com",label = "Companies", choices = as.character(selected_portfolio()),multiple = TRUE))
+  })
   
   observe({
     if(!is.null(input$table))
@@ -121,7 +138,10 @@ server <- function(input, output, session) {
       } else {
         data_ss[[j]] <- fromJSON(file = "empty.json")
       }
-      
+      print("Vinay")
+      print(paste0("https://fmpcloud.io/api/v3/historical-price-full/",com[j],"?from=",from_Date,"&to=",
+                   Sys.Date(),"&apikey=d044d11c5bbbc7c89697083850466e50"))
+      print("Vinay")
       stock_data <- t(as.data.frame(data_ss))
       stock_data <- as.data.frame(stock_data)
       stock_data$description <- rownames(stock_data)
@@ -165,6 +185,9 @@ server <- function(input, output, session) {
     nrow(xnew)
   })
   
+  
+  
+  ## To update top 100 values/data points to the table
   observeEvent(input$exe_top_hundred,{
     
     sam_df_All <- update_top_hundred_tables()
@@ -172,25 +195,20 @@ server <- function(input, output, session) {
     sam_df_All <- sam_df_All[!is.na(sam_df_All$openlow), ]
     sam_df_All <- as.data.frame(sam_df_All %>% group_by(ticker) %>% mutate(Previous_close = dplyr::lead(close, n = 1, default = NA)))
     sam_df_All <- sam_df_All[complete.cases(sam_df_All), ]
-    sam_df_All <- sam_df_All %>% group_by(ticker) %>% mutate(pred_open = round(fitted(lm(open ~ Previous_close)),2)) 
-    sam_df_All$`High-pred_open` <- round((sam_df_All$high - sam_df_All$pred_open),2)
-    sam_df_All$`Open-pred_open` <- round((sam_df_All$open - sam_df_All$pred_open),2)
-    sam_df_All$`Close-pred_open` <- round((sam_df_All$close - sam_df_All$pred_open),2)
-    sam_df_All$`pred_open-low` <- round((sam_df_All$pred_open - sam_df_All$low),2)
-    sam_df_All <- sam_df_All %>% mutate(First_condition = if_else(openlow < 0 & `Open-pred_open` > 0 & `Close-pred_open` > 0,"Inv","Not Inv"),
-                          Second_condition = if_else(openlow < 0 & `Open-pred_open` < 0 & `Close-pred_open` < 0,"Inv","Not Inv"),
-                          Third_condition = if_else(openlow < 0 & `Open-pred_open` < 0 & `Close-pred_open` > 0,"Inv","Not Inv"))
-    sam_df_All <- sam_df_All %>% mutate(Pre_con = if_else(First_condition == "Inv" | Second_condition == "Inv" | Third_condition == "Inv",
-                                            "Inv","Not Inv"))
-    sam_df_All$`Pred_open - Low_valid` <-  ifelse(sam_df_All$`pred_open-low` > 0 , "Valid","Not Valid")
-    sam_df_All$`High-pred_open_valid` <-  ifelse(sam_df_All$`High-pred_open` > 0 , "Valid","Not Valid")
-    sam_df_All <- sam_df_All %>% mutate(Final_Decision = if_else(Pre_con == "Inv" & `Pred_open - Low_valid` == "Valid" & `High-pred_open_valid` == "Valid",
-                                                          "Invest","Not Invest"))
-    sam_df_All$Final_Decision_0_1 <- ifelse(sam_df_All$Final_Decision == "Invest" , 1, -1)
-    sam_df_All <- sam_df_All %>% group_by(ticker) %>% mutate(`Std_Open-pred_open` = sd(`Open-pred_open`))
-    sam_df_All$relation <- sam_df_All$open / (sam_df_All$`Std_Open-pred_open` * sam_df_All$pred_open)
-    sam_df_All <- sam_df_All[c(1,2,12,11,9,7,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34, 3,4,5,6,8,10,13,14,15)]
-    
+    sam_df_All <- sam_df_All %>% group_by(ticker) %>% mutate(pred_high = fitted(lm(high ~ open))) 
+    sam_df_All$`High-pred_high` <- sam_df_All$high - sam_df_All$pred_high
+    sam_df_All <- sam_df_All %>% group_by(ticker) %>% mutate(`Std_High-pred_high` = sd(`High-pred_high`))
+    sam_df_All$relation_based_on_open <- sam_df_All$open / (sam_df_All$`Std_High-pred_high` * sam_df_All$pred_high)
+    sam_df_All$based_on_high <- sam_df_All$relation_based_on_open / sam_df_All$high
+    sam_df_All <- sam_df_All %>% group_by(ticker) %>% mutate(lead_based_on_high = dplyr::lead(based_on_high, n = 1, default = NA))
+    # sam_df_All <- sam_df_All %>% mutate(lead_based_on_high = as.numeric(format(lead_based_on_high, scientific = FALSE, big.mark = ",")),
+    #                                     based_on_high = as.numeric(format(based_on_high, scientific = FALSE, big.mark = ",")))
+    sam_df_All <- sam_df_All %>% filter(!is.na(lead_based_on_high)) %>% group_by(ticker) %>% mutate(pred_based_on_high = fitted(lm(based_on_high ~ lead_based_on_high))) 
+    sam_df_All$pred_high_2method <- sam_df_All$relation_based_on_open / sam_df_All$pred_based_on_high
+    sam_df_All <- sam_df_All %>% group_by(ticker) %>% mutate(open_nor = (open - min(open)) / (max(open) - min(open)))
+    sam_df_All$`high-open` <- sam_df_All$high - sam_df_All$open
+    sam_df_All <- sam_df_All %>% group_by(ticker) %>% mutate(`high-open_nor` = (`high-open` - min(`high-open`)) / (max(`high-open`) - min(`high-open`)))
+    sam_df_All <- sam_df_All[c(1,2,7,9,11,12,20,21,22,23,24,25,26,27,28,29,30,3:6,8,10,13:19)]
     sam_df_All_positive <- sam_df_All %>% group_by(ticker) %>% summarise(max_date = max(date))
     # View(sam_df_All_positive)
     sam_df_All_positive$openlow <- sam_df_All$openlow[match(sam_df_All_positive$ticker, sam_df_All$ticker)]
@@ -200,66 +218,76 @@ server <- function(input, output, session) {
     
     output$top_hundred <- renderDataTable(server = FALSE, {
     data_table$sam_df_All_filtered()
+      
     datatable(data_table$sam_df_All_filtered() ,rownames = F,
-              class   = 'cell-border stripe compact hover',
-              escape  = F, selection = 'multiple',extensions = 'Buttons',
-              options = list(autoWidth = TRUE,columnDefs = list(list(width = '150px', targets = "_all")
-                                                                ,list(visible=FALSE, targets=c(15:20,25:33))
+              class   = "compact nowrap hover row-border",
+              escape  = F ,extensions = 'Buttons',
+              options = list(paging = FALSE, pageLength = nrow(data_table$sam_df_All_filtered()), scrollY = "400px", autoWidth = TRUE,columnDefs = list(list(width = '150px', targets = "_all")
+                                                                ,list(visible=FALSE, targets=c(7:9,17:29))
                                                                 ),
-                             scrollX = TRUE,
-                             dom = 'Brtip',
+                             scrollX = TRUE, 
+                             dom = "tB",
                              buttons = c('copy', 'csv', 'excel')
                              ))
     })       
     
 
-    
-    sum_predicted_open <- reactive({
-      data_table$sam_df_All_filtered()
-      sum(data_table$sam_df_All_filtered()[["pred_open"]][data_table$sam_df_All_filtered()[["Final_Decision"]] == "Invest"])
-    })
-    
-    sum_profit <- reactive({
-      data_table$sam_df_All_filtered()
-      sum(data_table$sam_df_All_filtered()[["High-pred_open"]][data_table$sam_df_All_filtered()[["Final_Decision"]] == "Invest"])
-    })
-    
-    output$returns <- renderText({
-      round((sum_profit() * 100/ sum_predicted_open()),2) 
-    })
-    
     output$ret <- renderUI({
       data_table$sam_df_All_filtered()
       # asd <- data.frame(Companies = input$com)
-      asd <- data_table$sam_df_All_filtered() %>% filter(Final_Decision == "Invest") %>% group_by(ticker) %>% summarise(Returns = sum(`High-pred_open`)*100 / sum(`pred_open`))
-      output$aa <- renderRHandsontable(rhandsontable(asd))
-      rHandsontableOutput("aa")
+      # asd <- as.data.frame(data_table$sam_df_All_filtered() %>% filter(!is.na(lead_based_on_high)) %>% group_by(ticker) %>% summarise(open = first(open), pred_high = first(pred_high), `relation_based_on_open / pred_high / STD` = mean(relation_based_on_open), STD = mean(`Std_High-pred_high`)
+      #                                                                                          ,correlation = cor(based_on_high, lead_based_on_high)
+      #                                                                                          ))
+      asd <- as.data.frame(data_table$sam_df_All_filtered() %>% filter(!is.na(lead_based_on_high)) %>% 
+                             group_by(ticker) %>% 
+                             summarise(variation = (sum(pred_high) - sum(high)) * 100 /sum(high), open = first(open), pred_high = first(pred_high),STD = first(`Std_High-pred_high`), 
+                                       `relation_based_on_open / pred_high / STD` = open / (pred_high * STD), 
+                                       correlation = cor(based_on_high, lead_based_on_high),
+                                       based_on_high = first(based_on_high), high = `relation_based_on_open / pred_high / STD` / based_on_high))
+      values <<- reactiveVal(value = asd)
+      output$aa <- renderRHandsontable({
+        values() %>% mutate(`relation_based_on_open / pred_high / STD` = open / (pred_high * STD),
+                            high = `relation_based_on_open / pred_high / STD` / based_on_high
+                            ) %>% rhandsontable(digits = 25) %>% hot_cols(format = "0.0000000000000000000000000")
+      })
+      rHandsontableOutput("aa",width = 1300)
+      })
+    
+    observeEvent(input$sd,{
+      if(!is.null(input$aa))
+        values(hot_to_r(input$aa))
     })
 
-    output$openlow <- renderPlotly({
+
+    output$rela <- renderPlotly({
       data_table$sam_df_All_filtered()
       # sam_df_All_filtered <-  sam_df_All[sam_df_All$ticker %in% unlist(strsplit(paste0(input$com,collapse = ","),',')),]
-      p <- ggplot(data_table$sam_df_All_filtered(), aes(x=date, y=openlow)) +
-        geom_line(aes(colour = ticker)) +
+      p <- ggplot(data_table$sam_df_All_filtered(), aes(x=date, y=high)) +
+        geom_line(aes(colour = ticker)) + geom_line(mapping = aes_string(x = "date", y = input$phigh, colour = "ticker"))
         xlab("") +
         theme(axis.text.x=element_text(angle=60, hjust=1))
         ggplotly(p)
     })
     
-    output$inv_not_inv <- renderPlotly({
+    output$hi_op <- renderPlotly({
       data_table$sam_df_All_filtered()
-      # sam_df_All_filtered <-  sam_df_All[sam_df_All$ticker %in% unlist(strsplit(paste0(input$com,collapse = ","),',')),]
-      p <- ggplot(data_table$sam_df_All_filtered(), aes(x=date, y=`Open-pred_open`)) +
-        geom_line(aes(colour = ticker)) +
+      p <- ggplot(data_table$sam_df_All_filtered(), aes(x=date, y=`high-open_nor`)) +
+        geom_line(aes(colour = ticker)) + geom_point(aes(y=`high-open_nor`)) +
         xlab("") +
         theme(axis.text.x=element_text(angle=60, hjust=1))
       ggplotly(p)
     })
     
+    # output$hi_op <- renderPrint({
+    #   # class(data_table$sam_df_All_filtered())
+    #   cor(unstack(as.dataframe(data_table$sam_df_All_filtered())[c("high-open_nor", "ticker")]))
+    #   # cor(unstack(iris[c("Sepal.Length", "Species")]))
+    # })
+    
     output$open <- renderPlotly({
       data_table$sam_df_All_filtered()
       # sam_df_All_filtered <-  sam_df_All[sam_df_All$ticker %in% unlist(strsplit(paste0(input$com,collapse = ","),',')),]
-        p <- ggplot(data_table$sam_df_All_filtered(), aes(x=date, y=open)) +
+        p <- ggplot(data_table$sam_df_All_filtered(), aes(x=date, y=open_nor)) +
         geom_line(aes(colour = ticker)) + xlab("") + theme(axis.text.x=element_text(angle=60, hjust=1))
         ggplotly(p)
     })
@@ -303,7 +331,7 @@ server <- function(input, output, session) {
     
     output$oprec <- renderPlotly({
       data_table$sam_df_All_filtered()
-      p <- ggplot(data_table$sam_df_All_filtered(), aes(x=open, y=Previous_close)) +
+      p <- ggplot(data_table$sam_df_All_filtered(), aes(x=high, y=open)) +
         geom_point(aes(colour = ticker)) + xlab("") +
         theme(axis.text.x=element_text(angle=60, hjust=1))
       ggplotly(p)
@@ -311,11 +339,17 @@ server <- function(input, output, session) {
     
    
     
-    output$predicted_open <- renderPrint({
-      model <- data_table$sam_df_All_filtered() %>% group_by(ticker) %>% do(model = lm(open ~ Previous_close , data = .))
-      model$model[model$ticker %in% input$pre_tic][[1]]$coefficients[[1]] + (input$close_price * model$model[model$ticker %in% input$pre_tic][[1]]$coefficients[[2]])
+    output$predicted_high <- renderPrint({
+      # model <- data_table$sam_df_All_filtered() %>% group_by(ticker) %>% do(model = lm(open ~ Previous_close , data = .))
+      model <- data_table$sam_df_All_filtered() %>% group_by(ticker) %>% do(model = lm(high ~ open , data = .))
+      paste0("Predicted High : ",format(model$model[model$ticker %in% input$pre_tic][[1]]$coefficients[[1]] + (input$open_price * model$model[model$ticker %in% input$pre_tic][[1]]$coefficients[[2]]),scientific = F,digits = 20))
     })
-    
+
+    output$predicted_relation <- renderPrint({
+      model1 <- data_table$sam_df_All_filtered() %>% group_by(ticker) %>% do(model = lm(based_on_high ~ lead_based_on_high , data = .))
+      paste0("Predicted Relation : ",format(model1$model[model1$ticker %in% input$pre_tic1][[1]]$coefficients[[1]] + (input$prev_relation * model1$model[model1$ticker %in% input$pre_tic1][[1]]$coefficients[[2]]),scientific = F,digits = 20))
+    })
+
     
     
 })
@@ -323,9 +357,12 @@ server <- function(input, output, session) {
   observeEvent(input$start,{
     output$cmp <- renderPlotly({
       invalidateLater(1000)
-      xnew <- sample(1:1000, 1)
+      # xnew <- sample(1:1000, 1)
+      company_cmp <- rjson::fromJSON(file = "https://financialmodelingprep.com/api/v3/quote-short/VENKEYS.NS?apikey=d044d11c5bbbc7c89697083850466e50")
+      xnew <- company_cmp[[1]]$price
       # sqlQuery(conn, paste0("insert into [Current_mp] (mp) values ","(", xnew, ")"))
-      sqlQuery(conn, paste0("insert into [Current_mp] (mp, Date_time) values (",xnew,",", "CAST(GETDATE() AS TIME",")",")"))
+      # print(paste0("insert into [Current_mp] (mp, Date_time,[date], company) values (",xnew,",", "CAST(GETDATE() AS TIME",")",",convert(date, GETDATE(), 101),'c')"))
+      sqlQuery(conn, paste0("insert into [Current_mp] (mp, Date_time,[date], company) values (",xnew,",", "CAST(GETDATE() AS TIME",")",",convert(date, GETDATE(), 101),'c')"))
       cmp <- sqlQuery(conn, "select * from [Current_mp] order by Date_time desc")
       datatable(cmp, rownames = F)
       p <- ggplot(cmp, aes(x=Date_time, y=mp, group=1)) +
@@ -340,6 +377,9 @@ server <- function(input, output, session) {
     column(width = 3, selectInput("pre_tic","Ticker",choices = input$com))
   })
 
+  output$tic1 <- renderUI({
+    column(width = 3, selectInput("pre_tic1","Ticker",choices = input$com))
+  })
   
 }
 
