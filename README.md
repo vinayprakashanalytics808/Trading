@@ -8,7 +8,7 @@
 1. Database : Microsoft Sql Server and List_500_companies.xlsx [can be viewed in project folder]
 2. Programming langauge : R
 3. Platform to capture Stocks data : Financial Modeling Prep [It is a new concept that informs you about stock markets information (news, currencies and stock prices)]
-4. Main R files to consider : app.R(both ui and server logics are here), union_100_Data_points.R, Dbutils.R
+4. Main R files to consider : app.R(both ui and server logics are here), union_100_Data_points.R, Dbutils.R . Other files/folders can be ignored unless stated
 
 ## Description 
 The Application features below parameters
@@ -27,8 +27,8 @@ Mr. Vinay Prakash
 
 ## Special Thanks to https://financialmodelingprep.com/ in getting stock data
 
-## Expenses in building this application
-$19/Month
+## Expenses 
+$19/Month for purchasing the API
 
 ## Current status of API
 Not Active (Not purchased)
