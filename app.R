@@ -19,19 +19,11 @@ source("union_100_Data_points.R")
 List_500_companies <- read_excel("List_500_companies.xlsx")
 
 ui <- fluidPage(
-  # tags$style('.container-fluid {
-  #                            background-color: #CCCCFF;
-  #             }'),
-  fluidRow(column(width = 4, dateInput("from","From",value = Sys.Date()-15)),br(),
-           # column(width = 4, h5("Total Investment Per Share as per Predicted Open"),textOutput("investment")), 
-           # column(width = 4, h5("Total Returns per Share in %"),textOutput("returns"))
-           ),
+  fluidRow(column(width = 4, dateInput("from","From",value = Sys.Date()-15)),br()),
   fluidRow(uiOutput("com1")
     # column(width = 4, selectInput("com", "Companies", choices = List_500_companies$symbol, multiple = TRUE))
           ,column(width = 4, radioButtons("sel", "Portfolio", choices = unique(List_500_companies$Selective), selected =  "Others"))
            ),
-  
-  # verbatimTextOutput("slno"),
   actionButton("exe","Update Individual tables"),
   actionButton("exe_top_hundred","Update top 100 tables"),
   br(),br(),
@@ -52,12 +44,10 @@ ui <- fluidPage(
                column(width = 3, br(), div(style="width:500px;padding-left:100px;",verbatimTextOutput("predicted_relation")))
              )),
     tabPanel("DataBase Postitive Open Low",br(), dataTableOutput("positive_openlow")),
-    # tabPanel("Current Market Price",br(), dataTableOutput("cmp")),
     tabPanel("Current Market Price", br(),
              actionButton("start", "Start"), plotlyOutput("cmp")),
     tabPanel("High Vs Open",br(), plotlyOutput("oprec"))
    ),
-  # dataTableOutput("top_hundred"),
   br(),
   tabsetPanel(
     tabPanel("Relation",br(),selectInput("phigh", "Predicted High", choices = c("pred_high", "pred_high_2method")), plotlyOutput("rela")),
@@ -66,10 +56,7 @@ ui <- fluidPage(
     tabPanel("Low Trend",plotlyOutput("low")),
     tabPanel("High Trend",plotlyOutput("high")),
     tabPanel("Close Trend",plotlyOutput("close"))
-  ),
-  # plotlyOutput("openlow"),
-  # dataTableOutput("positive_openlow"),
-  # verbatimTextOutput("mp")
+  )
 )
 
 server <- function(input, output, session) {
@@ -78,6 +65,8 @@ server <- function(input, output, session) {
   x <- reactiveVal()
   values <- reactiveValues(data = data.frame(Description = c("INR","Price Per Share","High"),val = c(0,0,0)))
   
+  
+  ## List_500_companies.xlsx has the list of companies that is in scope. The user is selecting based on his preference
   selected_portfolio <- reactive({
     List_500_companies$symbol[List_500_companies$Selective == input$sel]
   })
@@ -97,18 +86,17 @@ server <- function(input, output, session) {
   })
   
   
-  # output$result <- renderText({ 
-  #   values$data[["val"]][1] / values$data[["val"]][2]
-  # })
-  
+
+  ## Trigget Update Individual tables post selecting the company
   observeEvent(input$exe,{
     
+    
+    ## if none of the companies are selected then shoot a message
     if(is.null(input$com)){
       showModal(modalDialog(
         title = "Note",
         "Please select atleast one company"
       ))
-      # showModal(ui = "Please select atleast one company")
     } else {
       
       ## Error to handle app from crashing (Error Handling)
@@ -121,9 +109,6 @@ server <- function(input, output, session) {
           cast.stock <- NULL
           from_Date <- input$from
           data_ss <- NULL
-          
-          ## new method
-          #ini_num <- c(309:312)
           ini_num <- List_500_companies$SL_no[List_500_companies$symbol %in% unlist(strsplit(paste0(input$com,collapse = ","),','))]
           ini_company_list_num <- c(ini_num)
           asd1 <- as.data.frame(List_500_companies[ini_company_list_num,])
@@ -134,12 +119,10 @@ server <- function(input, output, session) {
             # com <- c(com, paste0(List_500_companies$symbol[j], collapse=","))
             com[j] <- paste0(asd1$symbol[j], collapse=",")
             
-            
-            # com <- paste0(com, collapse = ",")
-            ## Get the stock prices 
+            ## Getting the stock prices from Financial Modeling Prep
             data_ss[[j]] <- rjson::fromJSON(file = 
                                               paste0("https://fmpcloud.io/api/v3/historical-price-full/",com[j],"?from=",from_Date,"&to=",
-                                                     Sys.Date(),"&apikey=d044d11c5bbbc7c89697083850466e50"))
+                                                     Sys.Date(),"&apikey=9021664c6f29c04aa567b7e637a3c70c"))
             
             ## old api key : 9021664c6f29c04aa567b7e637a3c70c
             
