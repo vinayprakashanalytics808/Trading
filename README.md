@@ -1,13 +1,13 @@
 # Trading
 
-## Database : Microsoft Sql Server and List_500_companies.xlsx [can be viewed in project folder]
-## Programming langauge : R
-## Platform to capture Stocks data : Financial Modeling Prep [It is a new concept that informs you about stock markets information (news, currencies and stock prices)]
-## Main R files to consider : app.R(both ui and server logics are here), union_100_Data_points.R, Dbutils.R
+1. Database : Microsoft Sql Server and List_500_companies.xlsx [can be viewed in project folder]
+2. Programming langauge : R
+3. Platform to capture Stocks data : Financial Modeling Prep [It is a new concept that informs you about stock markets information (news, currencies and stock prices)]
+4. Main R files to consider : app.R(both ui and server logics are here), union_100_Data_points.R, Dbutils.R
 
 # Description 
 The Application features below parameters
-1. captures nifty 500 stocks data
+1. Captures nifty 500 stocks data
 2. Extracts the data from Financial Modeling Prep based on api call and  stores the data into the database and retrieves it when required.  [Tab : DataBase Last 100 records]
 3. Makes relationship between day's high and day's open price (Correlation) [Tab : High Vs Open]
 4. Makes Prediction(day's high) based on day's open price [Tab : Prediction]
