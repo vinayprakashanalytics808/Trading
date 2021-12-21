@@ -29,7 +29,7 @@ ui <- fluidPage(
   br(),br(),
   tabsetPanel(
     tabPanel("DataBase Last 100 records",br(), dataTableOutput("top_hundred")),
-    tabPanel("Relation",br(), uiOutput("ret"),actionButton("sd","Calculate")),
+    # tabPanel("Relation",br(), uiOutput("ret"),actionButton("sd","Calculate")),
     tabPanel("Prediction",br(), 
              fluidRow(
                # column(width = 3, selectInput("tic","Ticker",choices = List_500_companies$symbol)),
@@ -37,20 +37,24 @@ ui <- fluidPage(
                column(width = 3,numericInput("open_price","Open Price",value = 3)), 
                # column(width = 3, br(), actionButton("cal","Calculate")),
                column(width = 3, br(), div(style="width:500px;padding-left:100px;",verbatimTextOutput("predicted_high")))
+             )
+             # ,fluidRow(
+             #   uiOutput("tic1"),
+             #   column(width = 3,numericInput("prev_relation","Relation",value = 3)), 
+             #   column(width = 3, br(), div(style="width:500px;padding-left:100px;",verbatimTextOutput("predicted_relation")))
+             # )
              ),
-             fluidRow(
-               uiOutput("tic1"),
-               column(width = 3,numericInput("prev_relation","Relation",value = 3)), 
-               column(width = 3, br(), div(style="width:500px;padding-left:100px;",verbatimTextOutput("predicted_relation")))
-             )),
     tabPanel("DataBase Postitive Open Low",br(), dataTableOutput("positive_openlow")),
-    tabPanel("Current Market Price", br(),
-             actionButton("start", "Start"), plotlyOutput("cmp")),
+    # tabPanel("Current Market Price", br(),
+    #          actionButton("start", "Start"), plotlyOutput("cmp")),
     tabPanel("High Vs Open",br(), plotlyOutput("oprec"))
    ),
   br(),
   tabsetPanel(
-    tabPanel("Relation",br(),selectInput("phigh", "Predicted High", choices = c("pred_high", "pred_high_2method")), plotlyOutput("rela")),
+    tabPanel("Relation",br(),selectInput("phigh", "Predicted High", 
+                                         # choices = c("pred_high", "pred_high_2method")), 
+                                         choices = c("pred_high")), 
+             plotlyOutput("rela")),
     tabPanel("high-open",plotlyOutput("hi_op")),
     tabPanel("Open Trend",plotlyOutput("open")),
     tabPanel("Low Trend",plotlyOutput("low")),
@@ -124,7 +128,7 @@ server <- function(input, output, session) {
                                               paste0("https://fmpcloud.io/api/v3/historical-price-full/",com[j],"?from=",from_Date,"&to=",
                                                      Sys.Date(),"&apikey=9021664c6f29c04aa567b7e637a3c70c"))
             
-            ## old api key : 9021664c6f29c04aa567b7e637a3c70c
+            ## old api key : 9021664c6f29c04a4522345rt7a3c70c
             
             
             
@@ -133,10 +137,6 @@ server <- function(input, output, session) {
             } else {
               data_ss[[j]] <- fromJSON(file = "empty.json")
             }
-            print("Vinay")
-            print(paste0("https://fmpcloud.io/api/v3/historical-price-full/",com[j],"?from=",from_Date,"&to=",
-                         Sys.Date(),"&apikey=d044d11c5bbbc7c89697083850466e50"))
-            print("Vinay")
             stock_data <- t(as.data.frame(data_ss))
             stock_data <- as.data.frame(stock_data)
             stock_data$description <- rownames(stock_data)
@@ -156,8 +156,10 @@ server <- function(input, output, session) {
             colnames(cast.stock)[8] <- "date1" 
             cast.stock <- cast.stock %>% mutate(across(c(adjClose, change,changeOverTime,changePercent,close,high,low,open,unadjustedVolume,volume,vwap), as.numeric))
             
-            ## update to New_dates in sql
+            ## update to New_dates in sql 
             sqlSave(conn, cast.stock, tablename = "New_dates", rownames = FALSE ,colnames = FALSE, append=TRUE)
+            
+            ## This stored procedure updates the latest records to individual tables and removes any duplicate records
             sqlQuery(conn, paste0("EXEC update_ticker_table ", "'",asd1$sql_table[j],"'"))
           }
           final_time <- Sys.time()
@@ -170,7 +172,6 @@ server <- function(input, output, session) {
           ))
         }
       )
-    # shinyalert("Oops!", "Something went wrong.", type = "error")
     }
   })
   
@@ -290,11 +291,6 @@ server <- function(input, output, session) {
       ggplotly(p)
     })
     
-    # output$hi_op <- renderPrint({
-    #   # class(data_table$sam_df_All_filtered())
-    #   cor(unstack(as.dataframe(data_table$sam_df_All_filtered())[c("high-open_nor", "ticker")]))
-    #   # cor(unstack(iris[c("Sepal.Length", "Species")]))
-    # })
     
     output$open <- renderPlotly({
       data_table$sam_df_All_filtered()
@@ -365,10 +361,11 @@ server <- function(input, output, session) {
     
 })
   
+  
+  ## Capturing real time data points of a company
   observeEvent(input$start,{
     output$cmp <- renderPlotly({
       invalidateLater(1000)
-      # xnew <- sample(1:1000, 1)
       company_cmp <- rjson::fromJSON(file = "https://financialmodelingprep.com/api/v3/quote-short/VENKEYS.NS?apikey=d044d11c5bbbc7c89697083850466e50")
       xnew <- company_cmp[[1]]$price
       # sqlQuery(conn, paste0("insert into [Current_mp] (mp) values ","(", xnew, ")"))
