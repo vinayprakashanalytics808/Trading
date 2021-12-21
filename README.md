@@ -19,11 +19,11 @@ The Application features below parameters
 5. Plots open, close, high and low prices for the last 100 records [Tabs : Open Trend, Close Trend, High Trend, Low Trend]
 6. Captures the difference between day's high and day's open (Considered as an important factor to invest in stocks)[Tab : high-open]
 
-## Usage of Application
-Which stock should I invest today? Is it Company A or Company B
-
-## Built by
+## Built by (Owner)
 Mr. Vinay Prakash
+
+## Why this Application?
+Which stock should I invest today? Is it Company A or Company B. This analysis is purely based on Mr.Vinay Prakash Strategy and is not based on any books or others suggestions. Do not use this application without the concent of the owner
 
 ## Special Thanks to https://financialmodelingprep.com/ in getting stock data
 
@@ -31,6 +31,6 @@ Mr. Vinay Prakash
 $19/Month for purchasing the API
 
 ## Current status of API
-Not Active (Not purchased)
+Not Active (API Not purchased)
 
 
