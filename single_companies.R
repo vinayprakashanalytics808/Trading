@@ -31,3 +31,7 @@ single_companies$`year high - year low` <- single_companies$yearHigh - single_co
   
 ended = Sys.time()
 ended  - started
+single_companies$`yearHigh-dayHigh` <- single_companies$yearHigh - single_companies$dayHigh
+companies_to_invest <- single_companies[single_companies$`yearHigh-dayHigh` == 0,]
+write.csv(single_companies, paste0("single_companies_",Sys.Date(), ".csv"))
+write.csv(companies_to_invest, paste0("companies_to_invest_",Sys.Date(), ".csv"))
